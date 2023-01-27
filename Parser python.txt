@@ -1,0 +1,92 @@
+import telebot
+from bs4 import BeautifulSoup
+from soup import requests
+from telebot import types
+
+HEADERS = {'user-agent':
+               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'}
+bot = telebot.TeleBot('5765860905:AAErl8Xv674Hfsa3-o1xor2xk5X2QUOkhBs')
+
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    name = f'Hello, {message.from_user.first_name} {message.from_user.last_name}'
+    bot.send_message(message.chat.id, name, parse_mode='html')
+    bot.send_message(message.chat.id, 'type {/parsing} to start', parse_mode='html')
+
+
+@bot.message_handler(commands=['parsing'])
+def parsing(message):
+    s1 = ''
+    s1 = '/Citroen' + ' /Daewoo' + ' /Datsun' + ' /Dodge' + ' /EXEED' + ' /FAW' + ' /Fiat' + ' /Ford' + ' /Geely' + ' /Genesis' + ' /Great_Wall' + ' /Haval' + ' /Honda' + ' /Hummer' + ' /Hyundai' + ' /Infiniti' + ' /Isuzu' + ' /AC' + ' /Jaguar' + ' /Jeep' + ' /Kia' + ' /Land_rover' + ' /Lexus' + ' /Lifan' + ' /Lincoln' + ' /Mazda' + ' /Mercedes_benz' + ' /Mini' + ' /Mitsubishi' + ' /Nissan' + ' /Opel' + ' /Peugeot' + ' /Porsche' + ' /Ravon' + ' /Renault' + ' /Samsung' + ' /Saab' + ' /Seat' + ' /Skoda' + ' /Ssang_yong' + ' /Subaru' + ' /Suzuki' + ' /Tesla' + ' /Toyota' + ' /Volkswagen' + ' /Volvo' + ' /GAZ' + ' /ZAZ' + ' /IJ' + ' /Moscvich' + ' /UAZ '
+    bot.send_message(message.chat.id, 'Choose the car from list:')
+    bot.send_message(message.chat.id, s1)
+
+
+@bot.message_handler(content_types=['text'])
+def save(message):
+    bot.send_message(message.chat.id, message.text)
+    print(message.text[1::].lower())
+    url = 'https://kolesa.kz/cars/' + message.text[1::].lower() + '/'
+    file = 'cars.csv'
+    html = get_html(url)
+    if html.status_code == 200:
+        cars = []
+        cars.extend(get_material(html.text))
+        how_many = int(pages_count(html.text))
+        print('parsing 1', 'from', how_many)
+        s1 = []
+        for i in range(2, how_many + 1):
+            print('parsing', i, 'from', how_many)
+            url = str('https://kolesa.kz/cars/' + message.text[1::].lower() + '/' + '?page=' + str(i))
+            html1 = get_html(url)
+            cars.extend(get_material(html1.text))
+        print('Found', len(cars), 'cars')
+        print('-' * 200)
+        for i in range(len(cars)):
+            print('|', cars[i]['title'], '---', cars[i]['price_tg'], '---', cars[i]['city'], '---',
+                  cars[i]['description'], '---', cars[i]['link'], end='\n')
+            print('|', '-' * 230, end='\n', sep='')
+
+
+def get_html(url, params=None):
+    try:
+        r = requests.get(url, headers=HEADERS, params=params)
+        return r
+    except requests.exceptions.TooManyRedirects:
+        pass
+
+
+def get_material(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    items = soup.find_all('div', class_='a-card__info')
+    cars = []
+    for item in items:
+        cars.append({
+            'title': item.find('h5', class_='a-card__title').get_text(strip=True),
+            'price_tg': item.find('span', class_='a-card__price').get_text(strip=True),
+            'city': item.find('span', class_='a-card__param').get_text(strip=True),
+            'description': item.find('p', class_='a-card__description').get_text(strip=True),
+            'link': 'https://kolesa.kz/' + item.find('a', class_='a-card__link').get('href')
+        })
+    return cars
+
+
+def pages_count(html):
+    soup = BeautifulSoup(html, 'html.parser')
+    pagination = soup.find_all('div', class_='pager')
+    if pagination!=[]:
+        pagination = str(pagination[0])
+        pagination = pagination.split('\n')
+        a = []
+        for i in range(len(pagination)):
+            if 'li' in pagination[i]:
+                a.append(pagination[i])
+        how_many = str(a[len(a) - 1])
+        how_many = how_many.split('">')
+        how_many[1] = how_many[1].split('</')
+        return how_many[1][0]
+    return 0
+
+
+bot.polling(none_stop=True)
