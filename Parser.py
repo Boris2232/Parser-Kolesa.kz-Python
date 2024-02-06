@@ -57,7 +57,7 @@ class Parser:
         data = [{'Car_name': i['title'], 'Price_tg': i['price_tg'].replace('\xa0', '.'), 'City': i['city'],
                  'Description': i['description'],
                  'Link': i['link'], } for i in self.cars]
-        with open(file_name, 'wt', encoding='utf-8') as file:
+        with open(file_name, 'wt', encoding='utf-16') as file:
             writer = csv.DictWriter(file, fieldnames=csv_headers, delimiter='\t')
             writer.writeheader()
             writer.writerows(data)
